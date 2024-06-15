@@ -35,9 +35,43 @@ paths:
       security:
         - auonline_auth:
             - read:courses
+  /course/{courseId}:
+    get:
+      tags:
+        - course
+      summary: Get a single course
+      description: Get a single course by its internal ID, along with its average data and all reviews
+      operationId: getCourse
+      parameters:
+        - name: courseId
+          in: path
+          description: Internal ID of course to return
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Course retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseDetail'          
+        '401':
+          description: unauthorized
+        '403':
+          description: forbidden
+        '404':
+          description: course not found
+        '500':
+          description: internal server error
+      security:
+        - auonline_auth:
+            - read:courses
 components:
   schemas:
     Courses:
+      description: A collection of courses with their averages and professors
       type: object
       properties:
         courses:
@@ -45,6 +79,7 @@ components:
           items:
             $ref: '#/components/schemas/Course'
     Course:
+      description: A single course with its averages and professors
       type: object
       properties:
         courseId:
@@ -58,13 +93,31 @@ components:
           items:
             $ref: '#/components/schemas/MiniProfessor'
         averageMetrics:
-            $ref: '#/components/schemas/CourseAverageMetrics'
-    CourseAverageMetrics:
+            $ref: '#/components/schemas/CourseMetrics'
+    CourseDetail:
+      description: A single course with its averages, professors, and reviews
+      allOf:
+      - $ref: '#/components/schemas/Course'
+      - type: object
+        properties:
+          reviews:
+            type: array
+            items:
+              $ref: '#/components/schemas/CourseReview'
+    CourseReview:
+      allOf:
+      - $ref: '#/components/schemas/CourseMetrics'
+      - type: object
+        properties:
+          reviewId:
+            type: integer
+          comments:
+            type: string
+    CourseMetrics:
       type: object
       properties:
         difficulty:
           type: integer
-          #TODO: ensure we want a min/max and that this is correct syntax
           minimum: 0 
           maximum: 5
         value:
