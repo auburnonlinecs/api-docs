@@ -68,6 +68,62 @@ paths:
       security:
         - auonline_auth:
             - read:courses
+  /professors:
+    get:
+      tags:
+        - professor
+      summary: Get all professors
+      description: Get all professors with average metrics and a list of courses taught
+      operationId: getProfessors
+      responses:
+        '200':
+          description: Professors retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Professors'          
+        '401':
+          description: unauthorized
+        '403':
+          description: forbidden
+        '500':
+          description: internal server error
+      security:
+        - auonline_auth:
+            - read:professors
+  /professor/{professorId}:
+    get:
+      tags:
+        - professor
+      summary: Get a single professor
+      description: Get a single professor with their average metrics, courses taught, and all reviews
+      operationId: getProfessor
+      parameters:
+        - name: professorId
+          in: path
+          description: Internal ID of professor to return
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Professor retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfessorDetail'          
+        '401':
+          description: unauthorized
+        '403':
+          description: forbidden
+        '404':
+          description: professor not found
+        '500':
+          description: internal server error
+      security:
+        - auonline_auth:
+            - read:professors
 components:
   schemas:
     Courses:
@@ -78,28 +134,36 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Course'
-    Course:
-      description: A single course with its averages and professors
+    MiniCourse:
+      description: The smallest packet of course data
       type: object
       properties:
         courseId:
           type: integer
         courseCode:
           type: string
-        name:
+        title:
           type: string
-        professors:
-          type: array
-          items:
-            $ref: '#/components/schemas/MiniProfessor'
-        averageMetrics:
-            $ref: '#/components/schemas/CourseMetrics'
+    Course:
+      description: A single course with its averages and professors
+      allOf:
+      - $ref: '#/components/schemas/MiniCourse'
+      - type: object
+        properties:
+          professors:
+            type: array
+            items:
+              $ref: '#/components/schemas/MiniProfessor'
+          averageMetrics:
+              $ref: '#/components/schemas/CourseMetrics'
     CourseDetail:
       description: A single course with its averages, professors, and reviews
       allOf:
       - $ref: '#/components/schemas/Course'
       - type: object
         properties:
+          description:
+            type: string
           reviews:
             type: array
             items:
@@ -107,27 +171,26 @@ components:
     CourseReview:
       allOf:
       - $ref: '#/components/schemas/CourseMetrics'
-      - type: object
-        properties:
-          reviewId:
-            type: integer
-          comments:
-            type: string
+      - $ref: '#/components/schemas/GeneralReview'
     CourseMetrics:
       type: object
       properties:
         difficulty:
-          type: integer
-          minimum: 0 
-          maximum: 5
+          $ref: '#/components/schemas/ZeroToFive'
         value:
-          type: integer
-          minimum: 0 
-          maximum: 5
+          $ref: '#/components/schemas/ZeroToFive'
         hoursPerWeek:
           type: integer
         grade:
           type: string #TODO: create custom type for grade enum?
+    Professors:
+      description: A collection of professors with average metrics and a list of their courses
+      type: object
+      properties:
+        professors:
+          type: array
+          items:
+            $ref: '#/components/schemas/Professor'
     MiniProfessor:
       type: object
       properties:
@@ -137,6 +200,66 @@ components:
           type: string
         overallAverage:
           type: integer
+    Professor:
+      description: A single professor with their average metrics and a list of their courses
+      type: object
+      properties:
+        professorId:
+          type: integer
+        name:
+          type: string
+        courses:
+          type: array
+          items:
+            $ref: '#/components/schemas/MiniCourse'
+        averageMetrics:
+          $ref: '#/components/schemas/ProfessorMetrics'
+    ProfessorDetail:
+      description: A single professor with their average metrics, a list of their courses, and all reviews
+      type: object
+      allOf:
+      - $ref: '#/components/schemas/Professor'
+      - type: object
+        properties:
+          description:
+            type: string
+          reviews:
+            type: array
+            items:
+              $ref: '#/components/schemas/ProfessorReview'
+    ProfessorReview:
+      description: A full review of a professor
+      type: object
+      allOf:
+      - $ref: '#/components/schemas/ProfessorMetrics'
+      - $ref: '#/components/schemas/GeneralReview'
+    ProfessorMetrics:
+      description: All data points collected on professors
+      type: object
+      properties:
+        overall:
+          $ref: '#/components/schemas/ZeroToFive'
+        knowledge:
+          $ref: '#/components/schemas/ZeroToFive'
+        preparation:
+          $ref: '#/components/schemas/ZeroToFive'
+        helpfulness:
+          $ref: '#/components/schemas/ZeroToFive'
+    GeneralReview:
+      description: A partial review that is type-agnostic for extensibility
+      type: object
+      properties:
+        reviewId:
+          type: integer
+        reviewerUsername:
+          type: string
+        comments:
+          type: string
+    ZeroToFive:
+      description: An integer limited to values between 0-5, inclusive. Commonly used in review metrics.
+      type: integer
+      minimum: 0
+      maximum: 5
   securitySchemes:
     auonline_auth:
       type: oauth2
